@@ -9,10 +9,13 @@ create table if not exists profiles (
   is_admin boolean not null default false
 );
 
--- First person to sign up becomes admin; everyone after is view-only
+-- First person to sign up becomes admin; everyone after is view-only.
+-- The advisory lock prevents a race where two simultaneous signups both see an empty table.
 create or replace function handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into profiles (id, email, is_admin) values (new.id, new.email, not exists (select 1 from profiles));
+  perform pg_advisory_xact_lock(742193);
+  insert into profiles (id, email, is_admin)
+  values (new.id, new.email, not exists (select 1 from profiles));
   return new;
 end $$;
 drop trigger if exists on_auth_user_created on auth.users;
