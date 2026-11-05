@@ -6,40 +6,55 @@
 <title>Duty Roster</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#14262b;--paper:#f4f7f6;--card:#fff;--line:#c9d4d2;--acc:#0e6b63;--warn:#b4442c;--mute:#5d7074;--band:#d9dfde;--req:#f5eedc}
+:root{
+  --ink:#14262b; --paper:#f4f7f6; --card:#fff; --line:#c9d4d2; --acc:#0e6b63; --warn:#b4442c; --mute:#5d7074; --band:#d9dfde; --req:#f5eedc;
+  --board-font: 12px; --row-height: 28px;
+}
+/* Dark Theme Overrides */
+body.dark {
+  --ink:#e2e8f0; --paper:#0f172a; --card:#1e293b; --line:#334155; --acc:#38bdf8; --warn:#f87171; --mute:#94a3b8; --band:#334155; --req:#422006;
+}
+body.compact { --board-font: 11px; --row-height: 22px; }
+body.no-weekend-bg .board thead th.red { background: var(--paper); color: var(--warn); }
+
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.4 'IBM Plex Sans',system-ui,sans-serif;color:var(--ink);background:var(--paper)}
-header{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--ink);color:#fff;flex-wrap:wrap}
+body{margin:0;font:14px/1.4 'IBM Plex Sans',system-ui,sans-serif;color:var(--ink);background:var(--paper);transition:background .3s, color .3s}
+header{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--ink);color:var(--paper);flex-wrap:wrap}
 header h1{font-size:16px;margin:0;font-weight:600;margin-right:auto}
-header span{color:#9fb5b3;font-size:13px}
+header span{color:var(--mute);font-size:13px}
 nav{display:flex;gap:4px;padding:8px 20px 0;border-bottom:1px solid var(--line);background:var(--card);overflow-x:auto}
 nav button{border:0;background:none;padding:10px 14px;font:inherit;cursor:pointer;color:var(--mute);border-bottom:3px solid transparent;white-space:nowrap}
 nav button.on{color:var(--ink);border-color:var(--acc);font-weight:600}
 main{padding:20px}
-button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:6px;cursor:pointer}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:6px;cursor:pointer;transition:all .2s}
+button:hover{border-color:var(--acc)}
 button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.pri:hover{opacity:.9}
 button.del{color:var(--warn)}
+button.del:hover{border-color:var(--warn)}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-input,select,textarea{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;width:100%}
+input,select,textarea{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);width:100%}
 .bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 .bar h2{margin:0 6px;font-size:16px;text-align:center}
 .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .wrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--card);max-height:75vh}
 table.board{border-collapse:collapse;width:100%;min-width:900px}
-.board th,.board td{border:1px solid var(--line);padding:0;font-size:12px;text-align:center}
+.board th,.board td{border:1px solid var(--line);padding:0;font-size:var(--board-font);text-align:center}
 .board thead th{background:var(--paper);position:sticky;top:0;z-index:2;padding:6px 4px;font-weight:600}
-.board thead th.red{color:#c4271a}
-.board td.st{text-align:left;padding:4px 8px;font-weight:600;min-width:150px;background:#fafcfb}
-.board td.tm{width:78px;font-size:11px;color:var(--mute);padding:2px;background:#fafcfb}
+.board thead th.red{color:var(--warn); background:var(--req)}
+.board td.st{text-align:left;padding:4px 8px;font-weight:600;min-width:150px;background:var(--paper)}
+.board td.tm{width:78px;font-size:11px;color:var(--mute);padding:2px;background:var(--paper)}
 .board tr.sec td{background:var(--band);font-weight:600;padding:3px;letter-spacing:.2px}
-.board select{width:100%;height:28px;border:0;border-radius:0;background:transparent;text-align:center;text-align-last:center;appearance:none;-webkit-appearance:none;cursor:pointer;font-size:12px;padding:0 2px}
-.board span.c{display:block;min-height:28px;line-height:28px;padding:0 3px}
-.board td.bad{background:#fbe3dd}
-.board td.fill{background:#e9f4f2}
+.board select{width:100%;height:var(--row-height);border:0;border-radius:0;background:transparent;text-align:center;text-align-last:center;appearance:none;-webkit-appearance:none;cursor:pointer;font-size:var(--board-font);padding:0 2px;color:var(--ink)}
+.board span.c{display:block;min-height:var(--row-height);line-height:var(--row-height);padding:0 3px}
+.board td.bad{background:#fbe3dd; color:#b4442c}
+body.dark .board td.bad{background:#7f1d1d; color:#fca5a5}
+.board td.fill{background:rgba(14,107,99,0.05)}
+body.dark .board td.fill{background:rgba(56,189,248,0.1)}
 .board td.has-req{background:var(--req) !important; outline:2px solid #d4a373; outline-offset:-2px}
 .pt{display:none}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:16px}
-.panel h3{margin:0 0 10px;font-size:14px}
+.panel h3{margin:0 0 10px;font-size:14px;color:var(--ink)}
 .gap{color:var(--warn)}.ok{color:var(--acc)}
 .form{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:14px}
 .form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute);flex:1;min-width:150px}
@@ -49,20 +64,23 @@ table.board{border-collapse:collapse;width:100%;min-width:900px}
 .auth h1{margin:0 0 4px;font-size:20px}.auth input{width:100%;margin:6px 0}.auth .r{display:flex;gap:8px;margin-top:10px}.auth .r button{flex:1}
 
 /* Chat UI */
-.chat-box{display:flex;flex-direction:column;height:300px;border:1px solid var(--line);border-radius:6px;background:#fafcfb;margin-bottom:10px}
+.chat-box{display:flex;flex-direction:column;height:350px;border:1px solid var(--line);border-radius:6px;background:var(--paper);margin-bottom:10px}
 .chat-log{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
-.chat-msg{padding:8px 12px;border-radius:6px;max-width:80%;font-size:13px;line-height:1.4}
+.chat-msg{padding:8px 12px;border-radius:6px;max-width:85%;font-size:13px;line-height:1.4}
 .chat-msg.user{align-self:flex-end;background:var(--acc);color:#fff}
-.chat-msg.ai{align-self:flex-start;background:#fff;border:1px solid var(--line);color:var(--ink)}
-.chat-input-row{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:#fff;border-radius:0 0 6px 6px}
+.chat-msg.ai{align-self:flex-start;background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.chat-input-row{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:var(--card);border-radius:0 0 6px 6px}
+.quick-prompts{display:flex;gap:6px;flex-wrap:wrap;padding:0 10px 10px;background:var(--card)}
+.quick-prompts button{font-size:11px;padding:4px 8px;border-radius:12px;background:var(--paper);border:1px solid var(--line)}
 
 @media print{
  @page{size:A4 landscape;margin:8mm}
  header,nav,.bar,.noprint,.form{display:none!important}
- body{background:#fff}main{padding:0}
+ body{background:#fff;color:#000}
+ main{padding:0}
  .pt{display:block;text-align:center;font:600 13px 'IBM Plex Sans',serif;border:1px solid #000;border-bottom:0;padding:5px}
  .wrap{max-height:none;overflow:visible;border:0;border-radius:0}
- table.board{min-width:0}.board th,.board td{font-size:8px;border-color:#000}
+ table.board{min-width:0}.board th,.board td{font-size:8px;border-color:#000;color:#000}
  .board thead th{position:static;background:#fff}.board td.st{min-width:0}.board select{height:auto;color:#000}.board span.c{min-height:0;line-height:1.5}
  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
@@ -77,7 +95,7 @@ table.board{border-collapse:collapse;width:100%;min-width:900px}
 // ==========================================
 const SUPABASE_URL = 'https://tixpbpkfqcrswkzwsiwl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_SetGqU71CXiWrWJYSmzNMQ_EGBPsCJi';
-const DEVELOPER_EMAIL = 'mohamed.maain.1122@gmail.com'; // 👈 CHANGE THIS TO YOUR EMAIL
+const DEVELOPER_EMAIL = 'mohamed.maain.1122@gmail.com'; // Hardcoded Developer Email
 // ==========================================
 
 const WEEKEND = [5, 6];
@@ -95,12 +113,30 @@ const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
 const PRIMARY = ['night', 'evening', 'day'];
 const now = new Date();
 
-const S = {user:null, admin:false, staffRecord:null, rosters:[], rid:null, staff:[], slots:[], alloc:[], mine:[], leaves:[], profiles:[], requests:[], 
+const S = {user:null, admin:false, dev:false, staffRecord:null, rosters:[], rid:null, staff:[], slots:[], alloc:[], mine:[], leaves:[], profiles:[], requests:[], 
            cfg:{max_consec:5, min_rest:11}, week:addDays(now, -now.getDay()), tab:'roster', err:'', chatHistory:[]};
 const byId = (a, id) => a.find(x => x.id === id);
 const weekDays = () => Array.from({length:7}, (_, i) => addDays(S.week, i));
 const mySlots = () => S.slots.filter(s => s.roster_id === S.rid);
 const rosterName = id => byId(S.rosters, id)?.name || '';
+
+/* ---------- Theme Settings ---------- */
+function applyTheme() {
+  const theme = JSON.parse(localStorage.getItem('dev_theme') || '{}');
+  if (theme.dark) document.body.classList.add('dark'); else document.body.classList.remove('dark');
+  if (theme.compact) document.body.classList.add('compact'); else document.body.classList.remove('compact');
+  if (theme.noWeekendBg) document.body.classList.add('no-weekend-bg'); else document.body.classList.remove('no-weekend-bg');
+  if (theme.acc) document.documentElement.style.setProperty('--acc', theme.acc);
+}
+function saveTheme() {
+  const acc = document.getElementById('set-acc').value;
+  const dark = document.getElementById('set-dark').checked;
+  const compact = document.getElementById('set-compact').checked;
+  const noWeekendBg = document.getElementById('set-weekend').checked;
+  localStorage.setItem('dev_theme', JSON.stringify({acc, dark, compact, noWeekendBg}));
+  applyTheme();
+}
+applyTheme();
 
 /* ---------- data ---------- */
 async function load() {
@@ -150,71 +186,108 @@ async function boot() {
   if (!data.session) return authView();
   S.user = data.session.user;
   
-  const isDev = S.user.email.toLowerCase() === DEVELOPER_EMAIL.toLowerCase();
+  S.dev = S.user.email.toLowerCase() === DEVELOPER_EMAIL.toLowerCase();
   const p = await db.from('profiles').select('is_admin').eq('id', S.user.id).maybeSingle();
-  S.admin = isDev || !!(p.data && p.data.is_admin);
+  S.admin = S.dev || !!(p.data && p.data.is_admin);
   
-  if (isDev && p.data && !p.data.is_admin) {
+  if (S.dev && p.data && !p.data.is_admin) {
     await db.from('profiles').update({is_admin:true}).eq('id', S.user.id);
   }
   load();
 }
 
-/* ---------- AI Chat Logic (Secure Grok Backend) ---------- */
-async function askAI() {
+/* =========================================================
+   LOCAL AI ENGINE (Rule-based NLP)
+   ========================================================= */
+function localAI(input) {
+  const t = input.toLowerCase();
+  
+  // 1. Update Rules (Max Consecutive & Rest)
+  const maxMatch = t.match(/(?:max|maximum|consec|days?)[\s:=]*(\d+)/i);
+  const restMatch = t.match(/(?:rest|night|hours?)[\s:=]*(\d+)/i);
+  
+  if (maxMatch || restMatch) {
+    const max = maxMatch ? +maxMatch[1] : S.cfg.max_consec;
+    const rest = restMatch ? +restMatch[1] : S.cfg.min_rest;
+    db.from('settings').upsert({ id: 1, max_consec: max, min_rest: rest }).then(() => {
+      localReply(`✅ Updated rules: Max Consecutive = **${max}**, Night Rest = **${rest} hours**.`);
+      load();
+    });
+    return;
+  }
+
+  // 2. Clear Week
+  if (t.match(/(clear|wipe|reset|delete)\s+(the\s+)?(week|roster|all)/)) {
+    localReply(`⚠️ Action triggered: **Clear Week**. Please confirm the browser prompt.`);
+    clearWeek();
+    return;
+  }
+
+  // 3. Auto Generate
+  if (t.match(/(auto|generate|schedule|assign|fill)/)) {
+    localReply(`⚙️ Action triggered: **Auto-Generate**. Please confirm the browser prompt.`);
+    generate();
+    return;
+  }
+
+  // 4. Add a Slot / Shift
+  if (t.match(/(add|create|new)\s+(a\s+)?(shift|slot|row|station)/)) {
+    const timeMatch = t.match(/(\d{1,2}):(\d{2})/g);
+    const numMatch = t.match(/(\d+)\s*(rows?|slots?|shifts?)/i);
+    const amount = numMatch ? +numMatch[1] : 1;
+    
+    let kind = 'day';
+    if (t.includes('night')) kind = 'night';
+    else if (t.includes('evening')) kind = 'evening';
+    else if (t.includes('cover')) kind = 'cover';
+    else if (t.includes('off') || t.includes('leave')) kind = 'off';
+    
+    let station = "New Station";
+    const stationMatch = t.match(/(?:for|at|station)\s+([a-z0-9\s]+?)(?=\s+(?:at|from|start|end|\d)|$)/i);
+    if (stationMatch) station = stationMatch[1].trim().replace(/\b\w/g, c => c.toUpperCase());
+    
+    let start = "08:00", end = "16:00";
+    if (timeMatch && timeMatch.length >= 1) start = timeMatch[0];
+    if (timeMatch && timeMatch.length >= 2) end = timeMatch[1];
+    
+    if (kind === 'off') { start = null; end = null; }
+    
+    const base = Math.max(0, ...mySlots().map(s => s.sort));
+    const inserts = Array.from({length: amount}, (_, i) => ({
+      roster_id: S.rid, section: kind === 'day' ? 'Day shift' : kind === 'night' ? 'Night shift' : kind === 'evening' ? 'Evening shift' : kind === 'cover' ? 'Covering' : 'Off / Leave',
+      kind, station, start_time: start, end_time: end, sort: base + i + 1
+    }));
+    
+    db.from('slots').insert(inserts).then(() => {
+      localReply(`✅ Added **${amount}** ${kind} row(s) for **${station}** (${start || 'all day'}).`);
+      load();
+    });
+    return;
+  }
+
+  // 5. Read Rules / Help
+  if (t.includes('rule') || t.includes('setting') || t.includes('help') || t.includes('what can you do')) {
+    localReply(`🤖 **Local AI Assistant**\n\nI understand these commands:\n- "Set max consecutive to 4"\n- "Change night rest to 10"\n- "Add a day shift for Main Reception at 08:00"\n- "Add 3 off rows"\n- "Auto generate"\n- "Clear the week"`);
+    return;
+  }
+
+  // Fallback
+  localReply(`🤖 I didn't quite catch that. Try saying:\n- "Set max consecutive to 4"\n- "Add a night shift for ER at 23:00"\n- "Auto generate"`);
+}
+
+function localReply(text) {
+  S.chatHistory.push({ role: 'model', parts: [{ text }] });
+  renderChatLog();
+}
+
+function sendMessage() {
   const input = document.getElementById('ai-input');
   const txt = input.value.trim();
   if (!txt) return;
-  
   input.value = '';
   S.chatHistory.push({ role: 'user', parts: [{ text: txt }] });
   renderChatLog();
-  
-  const log = document.getElementById('chat-log');
-  log.innerHTML += `<div class="chat-msg ai" id="ai-thinking">Thinking...</div>`;
-  log.scrollTop = log.scrollHeight;
-
-  try {
-    const { data, error } = await db.functions.invoke('ai-assistant', {
-      body: { 
-        chatHistory: S.chatHistory,
-        currentRules: S.cfg,
-        rosterName: rosterName(S.rid)
-      }
-    });
-
-    if (error) throw error;
-    
-    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Error communicating with AI.';
-    
-    document.getElementById('ai-thinking')?.remove();
-    S.chatHistory.push({ role: 'model', parts: [{ text: aiText }] });
-    renderChatLog();
-
-    // Parse for actions
-    const jsonMatch = aiText.match(/```json\n([\s\S]*?)\n```/);
-    if (jsonMatch) {
-      const action = JSON.parse(jsonMatch[1]);
-      if (action.action === 'update_rules') {
-        await db.from('settings').upsert({ id: 1, max_consec: action.max_consec, min_rest: action.min_rest });
-        alert('Rules updated successfully!');
-        load();
-      } else if (action.action === 'add_slot') {
-        await db.from('slots').insert({ roster_id: S.rid, section: action.section, kind: action.kind, station: action.station, start_time: action.start_time, end_time: action.end_time, sort: 99 });
-        alert('Slot added!');
-        load();
-      } else if (action.action === 'clear_week') {
-        if(confirm('AI requests to clear this week. Proceed?')) clearWeek();
-      } else if (action.action === 'generate') {
-        if(confirm('AI requests to auto-generate this week. Proceed?')) generate();
-      }
-    }
-  } catch (err) {
-    document.getElementById('ai-thinking')?.remove();
-    S.chatHistory.push({ role: 'model', parts: [{ text: 'Connection error. Check Edge Function.' }] });
-    renderChatLog();
-    console.error(err);
-  }
+  setTimeout(() => localAI(txt), 300);
 }
 
 function renderChatLog() {
@@ -222,9 +295,8 @@ function renderChatLog() {
   if (!log) return;
   log.innerHTML = S.chatHistory.map(m => {
     const isUser = m.role === 'user';
-    const text = m.parts[0].text;
-    const displayTxt = isUser ? text : text.replace(/```json[\s\S]*?```/g, '').trim();
-    return `<div class="chat-msg ${isUser ? 'user' : 'ai'}">${esc(displayTxt)}</div>`;
+    const text = m.parts[0].text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    return `<div class="chat-msg ${isUser ? 'user' : 'ai'}">${isUser ? esc(text) : text}</div>`;
   }).join('');
   log.scrollTop = log.scrollHeight;
 }
@@ -526,13 +598,23 @@ function addLeave() {
 }
 
 function settingsView() {
-  return `<div class="panel" style="margin-top:0"><h3>🤖 AI Assistant (Grok)</h3>
-  <p style="color:var(--mute);font-size:12px;margin:0 0 10px">Chat with the AI to change rules or add shifts. Example: "Set max consecutive days to 4" or "Add a Day shift at 08:00 for Main Reception".</p>
+  const theme = JSON.parse(localStorage.getItem('dev_theme') || '{}');
+  const curAcc = theme.acc || '#0e6b63';
+  
+  return `<div class="panel" style="margin-top:0"><h3>🤖 Local AI Assistant</h3>
+  <p style="color:var(--mute);font-size:12px;margin:0 0 10px">Chat with the local AI to change rules or add shifts.</p>
   <div class="chat-box">
     <div class="chat-log" id="chat-log"></div>
+    <div class="quick-prompts">
+      <button onclick="document.getElementById('ai-input').value='Set max consecutive to 4';sendMessage()">Set max consecutive to 4</button>
+      <button onclick="document.getElementById('ai-input').value='Set night rest to 10';sendMessage()">Set night rest to 10</button>
+      <button onclick="document.getElementById('ai-input').value='Add a day shift for Main Reception at 08:00';sendMessage()">Add a day shift</button>
+      <button onclick="document.getElementById('ai-input').value='Auto generate';sendMessage()">Auto generate</button>
+      <button onclick="document.getElementById('ai-input').value='Clear the week';sendMessage()">Clear week</button>
+    </div>
     <div class="chat-input-row">
-      <input id="ai-input" placeholder="Type a command or question..." onkeydown="if(event.key==='Enter') askAI()">
-      <button class="pri" onclick="askAI()">Send</button>
+      <input id="ai-input" placeholder="Type a command..." onkeydown="if(event.key==='Enter') sendMessage()">
+      <button class="pri" onclick="sendMessage()">Send</button>
     </div>
   </div></div>
 
@@ -545,11 +627,40 @@ function settingsView() {
   ${S.profiles.map(p => `<tr><td>${esc(p.email)}</td><td>${p.is_admin ? 'Admin' : 'View only'}</td><td>${p.id === S.user.id ? '' :
   `<button onclick="run(db.from('profiles').update({is_admin:${!p.is_admin}}).eq('id','${p.id}'))">${p.is_admin ? 'Make view only' : 'Make admin'}</button>`}</td></tr>`).join('')}</table></div>`;
 }
+
+function devView() {
+  const theme = JSON.parse(localStorage.getItem('dev_theme') || '{}');
+  const curAcc = theme.acc || '#0e6b63';
+  return `<div class="panel" style="margin-top:0"><h3>🎨 Developer Settings</h3>
+  <div class="form" style="flex-direction:column; align-items:stretch; gap:16px;">
+    <label style="flex-direction:row; justify-content:space-between; align-items:center;">
+      <span>Accent Color</span>
+      <input type="color" id="set-acc" value="${curAcc}" style="width:60px; height:30px; padding:0; border:none; cursor:pointer;">
+    </label>
+    <label style="flex-direction:row; justify-content:space-between; align-items:center;">
+      <span>Dark Mode</span>
+      <input type="checkbox" id="set-dark" ${theme.dark ? 'checked' : ''} style="width:20px; height:20px; cursor:pointer;">
+    </label>
+    <label style="flex-direction:row; justify-content:space-between; align-items:center;">
+      <span>Compact Roster (Smaller rows)</span>
+      <input type="checkbox" id="set-compact" ${theme.compact ? 'checked' : ''} style="width:20px; height:20px; cursor:pointer;">
+    </label>
+    <label style="flex-direction:row; justify-content:space-between; align-items:center;">
+      <span>Highlight Weekends (Friday/Saturday)</span>
+      <input type="checkbox" id="set-weekend" ${theme.noWeekendBg ? 'checked' : ''} style="width:20px; height:20px; cursor:pointer;">
+    </label>
+    <button class="pri" onclick="saveTheme()" style="margin-top:10px;">Apply Theme</button>
+  </div></div>`;
+}
+
 function render() {
   const tabs = [['roster', 'Roster'], ['mine', 'My shifts'], ['requests', 'Duty Requests']];
   if (S.admin) tabs.push(['staff', 'Staff'], ['layout', 'Layout'], ['leave', 'Leave'], ['settings', 'Rules & AI']);
-  const views = {roster:rosterView, mine:mineView, requests:requestsView, staff:staffView, layout:layoutView, leave:leaveView, settings:settingsView};
-  document.getElementById('app').innerHTML = `<header><h1>Duty Roster</h1><span>${esc(S.user.email)} · ${S.admin ? 'Admin' : 'View only'}</span><button onclick="signOut()">Sign out</button></header>
+  if (S.dev) tabs.push(['dev', 'Dev Settings']);
+  
+  const views = {roster:rosterView, mine:mineView, requests:requestsView, staff:staffView, layout:layoutView, leave:leaveView, settings:settingsView, dev:devView};
+  
+  document.getElementById('app').innerHTML = `<header><h1>Duty Roster</h1><span>${esc(S.user.email)} · ${S.dev ? 'Developer' : S.admin ? 'Admin' : 'View only'}</span><button onclick="signOut()">Sign out</button></header>
   <nav>${tabs.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" onclick="tab('${k}')">${l}</button>`).join('')}</nav>
   <main>${S.err ? `<p class="gap">${esc(S.err)}</p>` : ''}${(views[S.tab] || rosterView)()}</main>`;
   
