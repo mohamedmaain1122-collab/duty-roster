@@ -78,7 +78,6 @@ table.board{border-collapse:collapse;width:100%;min-width:900px}
 const SUPABASE_URL = 'https://tixpbpkfqcrswkzwsiwl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_SetGqU71CXiWrWJYSmzNMQ_EGBPsCJi';
 const DEVELOPER_EMAIL = 'mohamed.maain.1122@gmail.com'; // 👈 CHANGE THIS TO YOUR EMAIL
-const GEMINI_API_KEY = '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';     // 👈 GET FREE KEY FROM AISTUDIO.GOOGLE.COM
 // ==========================================
 
 const WEEKEND = [5, 6];
@@ -161,49 +160,33 @@ async function boot() {
   load();
 }
 
-/* ---------- AI Chat Logic ---------- */
+/* ---------- AI Chat Logic (Secure Grok Backend) ---------- */
 async function askAI() {
   const input = document.getElementById('ai-input');
   const txt = input.value.trim();
-  if (!txt || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
-    if (GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') alert('Please set your GEMINI_API_KEY in the code first.');
-    return;
-  }
+  if (!txt) return;
   
   input.value = '';
   S.chatHistory.push({ role: 'user', parts: [{ text: txt }] });
-  renderChatLog(); // Show user message immediately
+  renderChatLog();
   
-  // Add a temporary "Thinking..." message
   const log = document.getElementById('chat-log');
   log.innerHTML += `<div class="chat-msg ai" id="ai-thinking">Thinking...</div>`;
   log.scrollTop = log.scrollHeight;
 
-  const sysPrompt = `You are an AI assistant for a Duty Roster app. 
-You can change the auto-generate rules by outputting a JSON block. 
-Available actions:
-1. "update_rules": { "max_consec": number, "min_rest": number }
-2. "add_slot": { "section": string, "kind": "day"|"evening"|"night"|"cover"|"off", "station": string, "start_time": "HH:MM", "end_time": "HH:MM" }
-3. "clear_week": {}
-4. "generate": {}
-
-Respond to the user in plain text, but if you need to perform an action, include a JSON block wrapped in \`\`\`json ... \`\`\` at the end of your response.
-Current rules are: max_consec: ${S.cfg.max_consec}, min_rest: ${S.cfg.min_rest}.
-Current roster name: ${rosterName(S.rid)}.`;
-
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: sysPrompt }] },
-        contents: S.chatHistory
-      })
+    const { data, error } = await db.functions.invoke('ai-assistant', {
+      body: { 
+        chatHistory: S.chatHistory,
+        currentRules: S.cfg,
+        rosterName: rosterName(S.rid)
+      }
     });
-    const data = await res.json();
+
+    if (error) throw error;
+    
     const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Error communicating with AI.';
     
-    // Remove "Thinking..." message
     document.getElementById('ai-thinking')?.remove();
     S.chatHistory.push({ role: 'model', parts: [{ text: aiText }] });
     renderChatLog();
@@ -228,7 +211,7 @@ Current roster name: ${rosterName(S.rid)}.`;
     }
   } catch (err) {
     document.getElementById('ai-thinking')?.remove();
-    S.chatHistory.push({ role: 'model', parts: [{ text: 'Connection error.' }] });
+    S.chatHistory.push({ role: 'model', parts: [{ text: 'Connection error. Check Edge Function.' }] });
     renderChatLog();
     console.error(err);
   }
@@ -240,7 +223,6 @@ function renderChatLog() {
   log.innerHTML = S.chatHistory.map(m => {
     const isUser = m.role === 'user';
     const text = m.parts[0].text;
-    // If it's the AI response, hide the JSON block in the UI
     const displayTxt = isUser ? text : text.replace(/```json[\s\S]*?```/g, '').trim();
     return `<div class="chat-msg ${isUser ? 'user' : 'ai'}">${esc(displayTxt)}</div>`;
   }).join('');
@@ -544,7 +526,7 @@ function addLeave() {
 }
 
 function settingsView() {
-  return `<div class="panel" style="margin-top:0"><h3>🤖 AI Assistant</h3>
+  return `<div class="panel" style="margin-top:0"><h3>🤖 AI Assistant (Grok)</h3>
   <p style="color:var(--mute);font-size:12px;margin:0 0 10px">Chat with the AI to change rules or add shifts. Example: "Set max consecutive days to 4" or "Add a Day shift at 08:00 for Main Reception".</p>
   <div class="chat-box">
     <div class="chat-log" id="chat-log"></div>
