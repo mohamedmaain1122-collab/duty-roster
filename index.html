@@ -6,7 +6,7 @@
 <title>Duty Roster</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#14262b;--paper:#f4f7f6;--card:#fff;--line:#c9d4d2;--acc:#0e6b63;--warn:#b4442c;--mute:#5d7074;--band:#d9dfde}
+:root{--ink:#14262b;--paper:#f4f7f6;--card:#fff;--line:#c9d4d2;--acc:#0e6b63;--warn:#b4442c;--mute:#5d7074;--band:#d9dfde;--req:#f5eedc}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.4 'IBM Plex Sans',system-ui,sans-serif;color:var(--ink);background:var(--paper)}
 header{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--ink);color:#fff;flex-wrap:wrap}
@@ -36,6 +36,7 @@ table.board{border-collapse:collapse;width:100%;min-width:900px}
 .board span.c{display:block;min-height:28px;line-height:28px;padding:0 3px}
 .board td.bad{background:#fbe3dd}
 .board td.fill{background:#e9f4f2}
+.board td.has-req{background:var(--req) !important; outline:2px solid #d4a373; outline-offset:-2px}
 .pt{display:none}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:16px}
 .panel h3{margin:0 0 10px;font-size:14px}
@@ -47,7 +48,7 @@ table.board{border-collapse:collapse;width:100%;min-width:900px}
 .auth{max-width:340px;margin:12vh auto;background:var(--card);padding:28px;border:1px solid var(--line);border-radius:10px}
 .auth h1{margin:0 0 4px;font-size:20px}.auth input{width:100%;margin:6px 0}.auth .r{display:flex;gap:8px;margin-top:10px}.auth .r button{flex:1}
 @media print{
- @page{size:A4 portrait;margin:8mm}
+ @page{size:A4 landscape;margin:8mm}
  header,nav,.bar,.noprint,.form{display:none!important}
  body{background:#fff}main{padding:0}
  .pt{display:block;text-align:center;font:600 13px 'IBM Plex Sans',serif;border:1px solid #000;border-bottom:0;padding:5px}
@@ -62,26 +63,30 @@ table.board{border-collapse:collapse;width:100%;min-width:900px}
 <div id="app"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-// ====== 1. PUT YOUR SUPABASE KEYS HERE (Project Settings > API) ======
+// ==========================================
+// 1. SETUP CREDENTIALS
+// ==========================================
 const SUPABASE_URL = 'https://tixpbpkfqcrswkzwsiwl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_SetGqU71CXiWrWJYSmzNMQ_EGBPsCJi';
-// =====================================================================
-const WEEKEND = [5, 6];   // Friday, Saturday: counted for "fair weekend split"
-const RED_DAYS = [5];     // Friday shown in red, like your printed roster
+const DEVELOPER_EMAIL = 'mohamed.maain.1122@gmail.com'; // 👈 CHANGE THIS TO YOUR EMAIL
+// ==========================================
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const WEEKEND = [5, 6];
+const RED_DAYS = [5];
+const db = supabase.createClient(https://tixpbpkfqcrswkzwsiwl.supabase.co, sb_publishable_SetGqU71CXiWrWJYSmzNMQ_EGBPsCJi);
+
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const dmy = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-// Parse a "YYYY-MM-DD" string as a local-time date (avoids UTC shift bugs)
 const parseDay = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
 const hm = t => t ? t.slice(0, 5) : '';
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const PRIMARY = ['night', 'evening', 'day'];
 const now = new Date();
-const S = {user:null, admin:false, rosters:[], rid:null, staff:[], slots:[], alloc:[], mine:[], leaves:[], profiles:[],
+
+const S = {user:null, admin:false, staffRecord:null, rosters:[], rid:null, staff:[], slots:[], alloc:[], mine:[], leaves:[], profiles:[], requests:[], 
            cfg:{max_consec:5, min_rest:11}, week:addDays(now, -now.getDay()), tab:'roster', err:''};
 const byId = (a, id) => a.find(x => x.id === id);
 const weekDays = () => Array.from({length:7}, (_, i) => addDays(S.week, i));
@@ -97,26 +102,31 @@ async function load() {
     db.from('slots').select('*').order('sort'),
     db.from('leaves').select('*').gte('day', w0).lte('day', w1).order('day'),
     db.from('settings').select('*').eq('id', 1).maybeSingle(),
-    S.admin ? db.from('profiles').select('*').order('email') : {data:[]}
+    S.admin ? db.from('profiles').select('*').order('email') : {data:[]},
+    db.from('duty_requests').select('*').eq('status', 'pending').gte('day', w0).lte('day', w1)
   ]);
   S.err = (r.find(x => x.error)?.error.message) || '';
-  [S.rosters, S.staff, S.slots, S.leaves] = r.slice(0, 4).map(x => x.data || []);
+  [S.rosters, S.staff, S.slots, S.leaves, S.requests] = r.slice(0, 4).map(x => x.data || []);
+  S.requests = r[6].data || [];
   if (r[4].data) S.cfg = r[4].data;
   S.profiles = r[5].data || [];
   if (!byId(S.rosters, S.rid)) S.rid = S.rosters[0]?.id || null;
+  
   S.alloc = S.rid ? (await db.from('allocations').select('*').eq('roster_id', S.rid).gte('day', w0).lte('day', w1)).data || [] : [];
-  const ids = S.staff.filter(x => (x.email || '').toLowerCase() === (S.user.email || '').toLowerCase()).map(x => x.id);
-  S.mine = ids.length ? (await db.from('allocations').select('*').in('staff_id', ids).gte('day', ymd(S.week)).lte('day', w1)).data || [] : null;
+  
+  const ids = S.staff.filter(x => (x.auth_id === S.user.id) || (x.email || '').toLowerCase() === (S.user.email || '').toLowerCase()).map(x => x.id);
+  S.staffRecord = ids.length ? S.staff.find(x => x.id === ids[0]) : null;
+  S.mine = S.staffRecord ? (await db.from('allocations').select('*').eq('staff_id', S.staffRecord.id).gte('day', ymd(S.week)).lte('day', w1)).data || [] : null;
   render();
 }
 
 /* ---------- auth ---------- */
 function authView(msg = '') {
   document.getElementById('app').innerHTML = `<div class="auth"><h1>Duty Roster</h1>
-  <p style="color:var(--mute);margin:0 0 12px">Sign in to see the roster.</p>
+  <p style="color:var(--mute);margin:0 0 12px">Sign in with your provided credentials.</p>
   <input id="em" type="email" placeholder="Email" autocomplete="username">
-  <input id="pw" type="password" placeholder="Password (min 6 characters)" autocomplete="current-password">
-  <div class="r"><button class="pri" onclick="signIn()">Sign in</button><button onclick="signUp()">Create account</button></div>
+  <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+  <div class="r"><button class="pri" onclick="signIn()" style="width:100%">Sign in</button></div>
   <p class="gap" id="am">${esc(msg)}</p></div>`;
 }
 async function signIn() {
@@ -124,30 +134,34 @@ async function signIn() {
   const {error} = await db.auth.signInWithPassword({email:em.value.trim(), password:pw.value});
   if (error) am.textContent = error.message; else boot();
 }
-async function signUp() {
-  const em = document.getElementById('em'), pw = document.getElementById('pw'), am = document.getElementById('am');
-  const {data, error} = await db.auth.signUp({email:em.value.trim(), password:pw.value});
-  if (error) am.textContent = error.message;
-  else if (!data.session) { am.className = 'ok'; am.textContent = 'Account created. Check your email to confirm, then sign in.'; } else boot();
-}
 async function signOut() { await db.auth.signOut(); S.user = null; authView(); }
+
 async function boot() {
   const {data} = await db.auth.getSession();
   if (!data.session) return authView();
   S.user = data.session.user;
+  
+  // Check developer email OR DB admin flag
+  const isDev = S.user.email.toLowerCase() === DEVELOPER_EMAIL.toLowerCase();
   const p = await db.from('profiles').select('is_admin').eq('id', S.user.id).maybeSingle();
-  S.admin = !!(p.data && p.data.is_admin);
+  S.admin = isDev || !!(p.data && p.data.is_admin);
+  
+  // If dev, ensure DB says they are admin
+  if (isDev && p.data && !p.data.is_admin) {
+    await db.from('profiles').update({is_admin:true}).eq('id', S.user.id);
+  }
   load();
 }
 
 /* ---------- helpers ---------- */
 function maps() {
-  const al = {}, lv = new Set(), prim = {};
+  const al = {}, lv = new Set(), prim = {}, reqs = new Set();
   const kind = id => byId(S.slots, id)?.kind;
   S.alloc.forEach(a => { al[a.slot_id + '|' + a.day] = a.staff_id;
     if (PRIMARY.includes(kind(a.slot_id))) prim[a.staff_id + '|' + a.day] = (prim[a.staff_id + '|' + a.day] || 0) + 1; });
   S.leaves.forEach(l => lv.add(l.staff_id + '|' + l.day));
-  return {al, lv, prim};
+  S.requests.forEach(r => reqs.add(r.slot_id + '|' + r.day + '|' + r.staff_id));
+  return {al, lv, prim, reqs};
 }
 const slotTimes = (d, s) => {
   const [h, m] = (s.start_time || '08:00').split(':'), [h2, m2] = (s.end_time || '16:00').split(':');
@@ -173,11 +187,7 @@ async function setCell(el) {
 async function copyPrev() {
   if (!confirm('Replace this week with a copy of last week?')) return;
   const a = ymd(S.week), b = ymd(addDays(S.week, 6));
-  // Build the new rows from last week's allocations (S.alloc covers w0..w1, i.e. prev week + this week)
-  const rows = S.alloc
-    .filter(x => x.day < a)
-    .map(x => ({roster_id:S.rid, slot_id:x.slot_id, staff_id:x.staff_id, day:ymd(addDays(parseDay(x.day), 7))}));
-  // Insert first (safer), then clear this week's old rows, then delete any leftovers
+  const rows = S.alloc.filter(x => x.day < a).map(x => ({roster_id:S.rid, slot_id:x.slot_id, staff_id:x.staff_id, day:ymd(addDays(parseDay(x.day), 7))}));
   if (rows.length) {
     const ins = await db.from('allocations').upsert(rows, {onConflict:'slot_id,day'});
     if (ins.error) { alert(ins.error.message); return load(); }
@@ -191,24 +201,56 @@ async function clearWeek() {
   run(db.from('allocations').delete().eq('roster_id', S.rid).gte('day', ymd(S.week)).lte('day', ymd(addDays(S.week, 6))));
 }
 
-/* ---------- auto-generate (rules: max consecutive days, rest after night, fair nights/weekends, leave) ---------- */
+/* ---------- Staff Admin ---------- */
+async function inviteUser(staffId, email, name) {
+  if (!confirm(`Create a login account for ${name} (${email})?`)) return;
+  const pw = prompt(`Enter a temporary password for ${name} (min 6 chars):`);
+  if (!pw || pw.length < 6) return alert('Password must be at least 6 characters.');
+  
+  // Create user via Supabase Auth (requires email confirmations to be turned OFF in Supabase Auth settings)
+  const { data, error } = await db.auth.signUp({ email: email, password: pw });
+  
+  if (error) return alert('Error creating login: ' + error.message);
+  if (data.user) {
+    // Link the new auth ID to the staff record
+    const r = await db.from('staff').update({ auth_id: data.user.id }).eq('id', staffId);
+    if (r.error) alert('Account created, but failed to link to staff profile. Error: ' + r.error.message);
+    else { alert('Account created! Give the email and password to the employee.'); load(); }
+  }
+}
+
+/* ---------- Duty Requests ---------- */
+async function submitRequest(staffId, slotId, day, note) {
+  const r = await db.from('duty_requests').insert({staff_id: staffId, slot_id: slotId, day: day, note: note});
+  if (r.error) alert(r.error.message);
+  else { alert('Request submitted!'); load(); }
+}
+async function handleRequest(id, status) {
+  run(db.from('duty_requests').update({status}).eq('id', id));
+}
+
+/* ---------- auto-generate ---------- */
 async function generate() {
   const rs = mySlots(), pool = S.staff.filter(x => x.active && x.roster_id === S.rid);
   if (!rs.length || !pool.length) return alert('Add rows (Layout tab) and staff (Staff tab) for this roster first.');
   if (!confirm('Replace this week with an auto-generated roster? You can edit any cell afterwards.')) return;
+  
   const leave = new Set(S.leaves.map(l => l.staff_id + '|' + l.day));
   const st = {}; pool.forEach(x => st[x.id] = {tot:0, n:0, w:0, cov:0, streak:0, end:0, night:false});
   const rank = {night:0, evening:1, day:2};
   const prim = rs.filter(s => PRIMARY.includes(s.kind)).sort((a, b) => rank[a.kind] - rank[b.kind] || a.sort - b.sort);
   const covs = rs.filter(s => s.kind === 'cover'), offs = rs.filter(s => s.kind === 'off');
+  
   const commit = (id, d, s, count) => { const x = st[id]; x.end = slotTimes(d, s)[1]; x.night = s.kind === 'night'; x.streak++;
     if (count) { x.tot++; if (s.kind === 'night') x.n++; if (WEEKEND.includes(d.getDay())) x.w++; } };
   const out = [], add = (s, k, id) => out.push({roster_id:S.rid, slot_id:s.id, day:k, staff_id:id});
+  
   for (let d = addDays(S.week, -7); d <= addDays(S.week, 6); d = addDays(d, 1)) {
-    const k = ymd(d), used = new Set(), cu = new Set(), nightToday = new Set();
+    const k = ymd(d), used = new Set(), cu = new Set(), nightToday = new Set(), workedToday = new Set();
+    
     if (d < S.week) {
       S.alloc.filter(a => a.day === k).forEach(a => { const s = byId(S.slots, a.slot_id);
-        if (st[a.staff_id] && s && PRIMARY.includes(s.kind)) { commit(a.staff_id, d, s, false); used.add(a.staff_id); } });
+        if (st[a.staff_id] && s && PRIMARY.includes(s.kind)) { commit(a.staff_id, d, s, false); used.add(a.staff_id); workedToday.add(a.staff_id); } });
     } else {
       const wk = WEEKEND.includes(d.getDay());
       for (const s of prim) {
@@ -218,22 +260,21 @@ async function generate() {
           && !(st[x.id].night && s0 < st[x.id].end + S.cfg.min_rest * 36e5) && s0 >= st[x.id].end)
           .map(x => ({x, sc:st[x.id].tot + (s.kind === 'night' ? st[x.id].n * 3 : 0) + (wk ? st[x.id].w * 3 : 0) + Math.random() * .5}))
           .sort((a, b) => a.sc - b.sc)[0];
-        if (c) { add(s, k, c.x.id); commit(c.x.id, d, s, true); used.add(c.x.id); if (s.kind === 'night') nightToday.add(c.x.id); }
+        if (c) { add(s, k, c.x.id); commit(c.x.id, d, s, true); used.add(c.x.id); workedToday.add(c.x.id); if (s.kind === 'night') nightToday.add(c.x.id); }
       }
       for (const s of covs) {
         const c = pool.filter(x => !cu.has(x.id) && !nightToday.has(x.id) && !leave.has(x.id + '|' + k))
           .map(x => ({x, sc:(used.has(x.id) ? 0 : 100) + st[x.id].cov * 2 + Math.random() * .5})).sort((a, b) => a.sc - b.sc)[0];
-        if (c) { add(s, k, c.x.id); st[c.x.id].cov++; cu.add(c.x.id); }
+        if (c) { add(s, k, c.x.id); st[c.x.id].cov++; cu.add(c.x.id); workedToday.add(c.x.id); }
       }
       const rest = pool.filter(x => !used.has(x.id) && !cu.has(x.id))
         .sort((a, b) => leave.has(b.id + '|' + k) - leave.has(a.id + '|' + k));
       offs.forEach((s, i) => { if (rest[i]) add(s, k, rest[i].id); });
     }
-    // Reset streak for anyone who didn't work a primary slot today
-    pool.forEach(x => { if (!used.has(x.id)) st[x.id].streak = 0; });
-    // Clear the night flag once the rest window has passed (next day onward)
+    pool.forEach(x => { if (!workedToday.has(x.id)) st[x.id].streak = 0; });
     pool.forEach(x => { if (!nightToday.has(x.id) && !used.has(x.id)) st[x.id].night = false; });
   }
+  
   let r = await db.from('allocations').delete().eq('roster_id', S.rid).gte('day', ymd(S.week)).lte('day', ymd(addDays(S.week, 6)));
   if (!r.error && out.length) r = await db.from('allocations').insert(out);
   if (r.error) alert(r.error.message);
@@ -272,7 +313,12 @@ function boardRows(rs, days, m) {
     days.forEach((d, di) => {
       const k = ymd(d), sid = m.al[s.id + '|' + k], x = byId(S.staff, sid);
       const bad = x && ((PRIMARY.includes(s.kind) && m.prim[sid + '|' + k] > 1) || (s.kind !== 'off' && m.lv.has(sid + '|' + k)));
-      tds += `<td class="${bad ? 'bad' : x ? 'fill' : ''}" ${bad ? 'title="Double-booked or on leave"' : ''}>` + (S.admin
+      
+      // Check if there are pending requests for this slot
+      const reqForCell = S.requests.filter(r => r.slot_id === s.id && r.day === k);
+      const hasReq = reqForCell.length > 0;
+      
+      tds += `<td class="${bad ? 'bad' : x ? 'fill' : ''} ${hasReq ? 'has-req' : ''}" ${bad ? 'title="Double-booked or on leave"' : hasReq ? 'title="Pending Duty Request"' : ''}>` + (S.admin
         ? `<select data-s="${s.id}" data-d="${k}" onchange="setCell(this)" aria-label="${esc(s.station)} ${k}">${sid ? opts[di].replace(`value="${sid}"`, `value="${sid}" selected`) : opts[di]}</select>`
         : `<span class="c">${esc(x?.name)}</span>`) + '</td>';
     });
@@ -306,20 +352,45 @@ function rosterView() {
   <table class="list"><tr><th>Name</th><th>Shifts</th><th>Nights</th><th>Weekend</th></tr>${tally.map(t => `<tr><td>${esc(t.x.name)}</td><td>${t.t}</td><td>${t.n}</td><td>${t.w}</td></tr>`).join('') || '<tr><td colspan="4">No staff in this roster.</td></tr>'}</table></div>`;
 }
 function mineView() {
-  if (S.mine === null) return `<div class="panel">Your login (${esc(S.user.email)}) isn't linked to a staff member yet. Ask an admin to put this email on your Staff entry.</div>`;
+  if (!S.staffRecord) return `<div class="panel">Your login (${esc(S.user.email)}) isn't linked to a staff member yet. Ask an admin to link your email in the Staff tab.</div>`;
   const rows = [...S.mine].sort((a, b) => a.day.localeCompare(b.day)).map(a => { const s = byId(S.slots, a.slot_id); if (!s) return '';
     const d = parseDay(a.day);
     return `<tr><td>${DAYS[d.getDay()]} ${dmy(d)}</td><td>${esc(s.station)}</td><td>${s.kind === 'off' ? 'Off / leave' : hm(s.start_time) + ' - ' + hm(s.end_time)}</td><td>${esc(rosterName(a.roster_id))}</td></tr>`; }).join('');
   return `<div class="bar"><button onclick="go(-1)">‹</button><h2>${dmy(S.week)} to ${dmy(addDays(S.week, 6))}</h2><button onclick="go(1)">›</button></div>
-  <div class="panel"><table class="list"><tr><th>Day</th><th>Station</th><th>Time</th><th>Roster</th></tr>${rows || '<tr><td colspan="4">Nothing allocated this week.</td></tr>'}</table></div>`;
+  <div class="panel"><h3>My Allocations</h3><table class="list"><tr><th>Day</th><th>Station</th><th>Time</th><th>Roster</th></tr>${rows || '<tr><td colspan="4">Nothing allocated this week.</td></tr>'}</table></div>`;
+}
+function requestsView() {
+  if (!S.staffRecord) return `<div class="panel">Your login isn't linked to a staff profile yet. Ask an admin to link you before making requests.</div>`;
+  
+  const myReqs = S.requests.filter(r => r.staff_id === S.staffRecord.id);
+  const availableSlots = mySlots();
+  const days = weekDays();
+  
+  return `<div class="panel" style="margin-top:0"><h3>Submit a Duty Request</h3>
+  <div class="form">
+    <label>Date<select id="rqd">${days.map(d => `<option value="${ymd(d)}">${DAYS[d.getDay()]} ${dmy(d)}</option>`).join('')}</select></label>
+    <label>Shift / Station<select id="rqs">${availableSlots.map(s => `<option value="${s.id}">${esc(s.section)} - ${esc(s.station)} (${hm(s.start_time)})</option>`).join('')}</select></label>
+    <label>Note (optional)<input id="rqn" placeholder="Reason..."></label>
+    <button class="pri" onclick="submitRequest('${S.staffRecord.id}', document.getElementById('rqs').value, document.getElementById('rqd').value, document.getElementById('rqn').value)">Submit Request</button>
+  </div></div>
+  
+  <div class="panel"><h3>My Requests</h3>
+  <table class="list"><tr><th>Date</th><th>Shift</th><th>Note</th><th>Status</th></tr>
+  ${myReqs.map(r => {
+    const s = byId(S.slots, r.slot_id), d = parseDay(r.day);
+    const col = r.status === 'approved' ? 'var(--acc)' : r.status === 'rejected' ? 'var(--warn)' : 'var(--mute)';
+    return `<tr><td>${DAYS[d.getDay()]} ${dmy(d)}</td><td>${esc(s?.station)}</td><td>${esc(r.note)}</td><td style="color:${col};font-weight:600;text-transform:capitalize">${r.status}</td></tr>`;
+  }).join('') || '<tr><td colspan="4">No requests submitted yet.</td></tr>'}
+  </table></div>`;
 }
 function staffView() {
   const ro = sel => `<option value="">None</option>` + S.rosters.map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${esc(r.name)}</option>`).join('');
   return `<div class="form"><label>Name<input id="sn"></label><label>Role / title (optional)<input id="sr" placeholder="Manager"></label>
   <label>Roster<select id="sro">${ro(S.rid)}</select></label><label>Login email (optional)<input id="se" type="email"></label><button class="pri" onclick="addStaff()">Add staff</button></div>
-  <table class="list"><tr><th>Name</th><th>Role</th><th>Roster (change to move them)</th><th>Email</th><th></th></tr>
+  <table class="list"><tr><th>Name</th><th>Role</th><th>Roster</th><th>Email</th><th>Login Status</th><th></th></tr>
   ${S.staff.map(x => `<tr style="${x.active ? '' : 'opacity:.5'}"><td>${esc(x.name)}</td><td>${esc(x.role)}</td>
   <td><select onchange="run(db.from('staff').update({roster_id:this.value||null}).eq('id','${x.id}'))">${ro(x.roster_id)}</select></td><td>${esc(x.email)}</td>
+  <td>${x.auth_id ? '<span class="ok">Linked</span>' : x.email ? `<button onclick="inviteUser('${x.id}', '${esc(x.email)}', '${esc(x.name)}')" style="padding:4px 8px;font-size:12px">Invite Login</button>` : '<span class="gap">No email</span>'}</td>
   <td><button onclick="run(db.from('staff').update({active:${!x.active}}).eq('id','${x.id}'))">${x.active ? 'Deactivate' : 'Activate'}</button>
   <button class="del" onclick="delStaff(${JSON.stringify(x.id).replace(/"/g,'&quot;')}, ${JSON.stringify(x.name).replace(/"/g,'&quot;')})">Delete</button></td></tr>`).join('')}</table>`;
 }
@@ -329,12 +400,25 @@ function delStaff(id, name) {
   if (!confirm(`Delete ${name} and all their allocations?`)) return;
   run(db.from('staff').delete().eq('id', id));
 }
+
 function layoutView() {
   const rs = mySlots();
+  
+  const reqPanel = `<div class="panel"><h3>Pending Duty Requests</h3>
+  <table class="list"><tr><th>Staff</th><th>Date</th><th>Shift</th><th>Note</th><th>Action</th></tr>
+  ${S.requests.map(r => {
+    const s = byId(S.slots, r.slot_id), x = byId(S.staff, r.staff_id), d = parseDay(r.day);
+    return `<tr><td>${esc(x?.name)}</td><td>${DAYS[d.getDay()]} ${dmy(d)}</td><td>${esc(s?.station)}</td><td>${esc(r.note)}</td>
+    <td><button class="pri" onclick="handleRequest('${r.id}', 'approved')" style="padding:4px 8px">Approve</button>
+    <button class="del" onclick="handleRequest('${r.id}', 'rejected')" style="padding:4px 8px">Reject</button></td></tr>`;
+  }).join('') || '<tr><td colspan="5">No pending requests.</td></tr>'}
+  </table></div>`;
+
   return `<div class="panel" style="margin-top:0"><h3>Rosters</h3><div class="form"><label>New roster name<input id="rn"></label>
   <button class="pri" onclick="v('rn')&&run(db.from('rosters').insert({name:v('rn'),sort:${S.rosters.length + 1}}))">Add roster</button>
   ${S.rid ? `<button class="del" onclick="confirm('Delete this whole roster, its rows and allocations?')&&run(db.from('rosters').delete().eq('id','${S.rid}'))">Delete selected roster</button>` : ''}</div>
   <label>Editing rows of: <select onchange="switchRoster(this.value)">${S.rosters.map(r => `<option value="${r.id}" ${r.id === S.rid ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></label></div>
+  ${reqPanel}
   <div class="panel"><h3>Add rows to the board</h3><div class="form">
   <label>Section heading<input id="ls" value="Day shift"></label>
   <label>Type<select id="lk"><option value="day">Day shift</option><option value="evening">Evening shift</option><option value="night">Night shift</option><option value="cover">Covering / calls</option><option value="off">Leave &amp; off</option></select></label>
@@ -377,9 +461,9 @@ function settingsView() {
   `<button onclick="run(db.from('profiles').update({is_admin:${!p.is_admin}}).eq('id','${p.id}'))">${p.is_admin ? 'Make view only' : 'Make admin'}</button>`}</td></tr>`).join('')}</table></div>`;
 }
 function render() {
-  const tabs = [['roster', 'Roster'], ['mine', 'My shifts']];
+  const tabs = [['roster', 'Roster'], ['mine', 'My shifts'], ['requests', 'Duty Requests']];
   if (S.admin) tabs.push(['staff', 'Staff'], ['layout', 'Layout'], ['leave', 'Leave'], ['settings', 'Rules & access']);
-  const views = {roster:rosterView, mine:mineView, staff:staffView, layout:layoutView, leave:leaveView, settings:settingsView};
+  const views = {roster:rosterView, mine:mineView, requests:requestsView, staff:staffView, layout:layoutView, leave:leaveView, settings:settingsView};
   document.getElementById('app').innerHTML = `<header><h1>Duty Roster</h1><span>${esc(S.user.email)} · ${S.admin ? 'Admin' : 'View only'}</span><button onclick="signOut()">Sign out</button></header>
   <nav>${tabs.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" onclick="tab('${k}')">${l}</button>`).join('')}</nav>
   <main>${S.err ? `<p class="gap">${esc(S.err)}</p>` : ''}${(views[S.tab] || rosterView)()}</main>`;

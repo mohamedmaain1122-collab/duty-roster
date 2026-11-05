@@ -1,7 +1,7 @@
 -- Run once in Supabase: SQL Editor > New query > paste > Run
--- NOTE: this REPLACES the earlier version's tables (staff, shifts, assignments, etc.).
+-- NOTE: this REPLACES the earlier version's tables.
 
-drop table if exists allocations, leaves, slots, staff, rosters, settings, assignments, shifts cascade;
+drop table if exists duty_requests, allocations, leaves, slots, staff, rosters, settings, profiles cascade;
 
 create table if not exists profiles (
   id uuid primary key references auth.users on delete cascade,
@@ -9,21 +9,19 @@ create table if not exists profiles (
   is_admin boolean not null default false
 );
 
--- First person to sign up becomes admin; everyone after is view-only.
--- The advisory lock prevents a race where two simultaneous signups both see an empty table.
+-- Security function
+create or replace function is_admin() returns boolean language sql security definer stable set search_path = public as $$
+  select coalesce((select is_admin from profiles where id = auth.uid()), false)
+$$;
+
+-- Auto-create profile for new users (No auto-admin, we handle that in app)
 create or replace function handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  perform pg_advisory_xact_lock(742193);
-  insert into profiles (id, email, is_admin)
-  values (new.id, new.email, not exists (select 1 from profiles));
+  insert into profiles (id, email, is_admin) values (new.id, new.email, false);
   return new;
 end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();
-
-create or replace function is_admin() returns boolean language sql security definer stable set search_path = public as $$
-  select coalesce((select is_admin from profiles where id = auth.uid()), false)
-$$;
 
 create table rosters (
   id uuid primary key default gen_random_uuid(),
@@ -33,23 +31,23 @@ create table rosters (
 
 create table staff (
   id uuid primary key default gen_random_uuid(),
+  auth_id uuid references auth.users on delete set null, -- links to login
   name text not null,
-  role text,                                   -- optional title, e.g. Manager (used when a row requires a role)
-  roster_id uuid references rosters on delete set null,   -- change this to move someone to another roster
-  email text,                                  -- links a login to this person for "My shifts"
+  role text,
+  roster_id uuid references rosters on delete set null,
+  email text,
   active boolean not null default true
 );
 
--- One row of the board (e.g. one of the four "Main Reception" rows)
 create table slots (
   id uuid primary key default gen_random_uuid(),
   roster_id uuid not null references rosters on delete cascade,
-  section text not null,                       -- heading, e.g. Day shift
+  section text not null,
   kind text not null check (kind in ('day','evening','night','cover','off')),
-  station text not null,                       -- e.g. Main Reception
+  station text not null,
   start_time time,
   end_time time,
-  role text,                                   -- optional: only staff with this role can be auto-filled here
+  role text,
   sort int not null default 0
 );
 
@@ -61,8 +59,6 @@ create table allocations (
   day date not null,
   unique (slot_id, day)
 );
-create index on allocations (roster_id, day);
-create index on allocations (staff_id, day);
 
 create table leaves (
   id uuid primary key default gen_random_uuid(),
@@ -72,6 +68,17 @@ create table leaves (
   unique (staff_id, day)
 );
 
+-- NEW: Duty Requests Table
+create table duty_requests (
+  id uuid primary key default gen_random_uuid(),
+  staff_id uuid not null references staff on delete cascade,
+  slot_id uuid not null references slots on delete cascade,
+  day date not null,
+  note text,
+  status text default 'pending' check (status in ('pending','approved','rejected')),
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
 create table settings (
   id int primary key default 1 check (id = 1),
   max_consec int not null default 5,
@@ -79,22 +86,29 @@ create table settings (
 );
 insert into settings (id) values (1);
 
--- Security: everyone signed in can read, only admins can change
+-- Security Policies
 alter table profiles enable row level security;
-drop policy if exists "own or admin read" on profiles;
-drop policy if exists "admin update" on profiles;
-create policy "own or admin read" on profiles for select using (id = auth.uid() or is_admin());
-create policy "admin update" on profiles for update using (is_admin());
+create policy "read profiles" on profiles for select to authenticated using (true);
+create policy "admin update profiles" on profiles for update to authenticated using (is_admin()) with check (is_admin());
 
 do $$ declare t text; begin
-  foreach t in array array['rosters','staff','slots','allocations','leaves','settings'] loop
+  foreach t in array array['rosters','staff','slots','allocations','leaves','duty_requests','settings'] loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy "read" on %I for select to authenticated using (true)', t);
     execute format('create policy "admin write" on %I for all to authenticated using (is_admin()) with check (is_admin())', t);
   end loop;
 end $$;
 
--- ===== Seed: your two rosters, copied from OPD_Duty_Roster.pdf =====
+-- Allow staff to insert their own duty requests
+create policy "staff insert own requests" on duty_requests for insert to authenticated with check (
+  staff_id in (select id from staff where auth_id = auth.uid())
+);
+-- Allow staff to delete their own pending requests
+create policy "staff delete own requests" on duty_requests for delete to authenticated using (
+  status = 'pending' and staff_id in (select id from staff where auth_id = auth.uid())
+);
+
+-- ===== Seed: your two rosters =====
 create function _add(r uuid, sec text, k text, st text, s time, e time, n int default 1) returns void language plpgsql as $$
 declare i int;
 begin
