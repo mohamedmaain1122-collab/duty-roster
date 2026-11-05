@@ -73,7 +73,7 @@ const DEVELOPER_EMAIL = 'mohamed.maain.1122@gmail.com'; // 👈 CHANGE THIS TO Y
 
 const WEEKEND = [5, 6];
 const RED_DAYS = [5];
-const db = supabase.createClient(https://tixpbpkfqcrswkzwsiwl.supabase.co, sb_publishable_SetGqU71CXiWrWJYSmzNMQ_EGBPsCJi);
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2, '0');
